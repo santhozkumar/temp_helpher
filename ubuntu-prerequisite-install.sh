@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -euo pipefail
 exec   > >(tee -ia /var/log/pre-requisite-install.log)
 exec  2> >(tee -ia /var/log/pre-requisite-install.log >& 2)
 exec 19>> /var/log/pre-requisite-install.log
