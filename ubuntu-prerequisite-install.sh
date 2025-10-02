@@ -30,7 +30,7 @@ EOF
 
 cat > /etc/systemd/network/20-dhcp-legacy.network << EOF
 [Match]
-Name=en*
+Name=eth*
 
 [Network]
 DHCP=yes
