@@ -7,46 +7,14 @@ exec 19>> /var/log/pre-requisite-install.log
 FIPS_ENABLED="${IS_FIPS:-false}"
 FIPS_TOKEN="${FIPS_TOKEN:-}"
 
-
-echo "Installing pre-requisites"
-echo "========================"
-sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get update
-sudo apt-get update && sudo apt-get install -y bash jq zstd rsync systemd-timesyncd conntrack iptables rsyslog --no-install-recommends
-
-echo "Disabling netplan"
-echo "========================"
-sudo mkdir -p /etc/netplan/backup
-sudo mv /etc/netplan/*.yaml /etc/netplan/backup/ || echo "no yaml netplan files"
-
-
-echo "Configuring systemd-networkd"
-echo "========================"
-cat > /etc/systemd/network/20-dhcp.network << EOF
-[Match]
-Name=en*
-
-[Network]
-DHCP=yes
-EOF
-
-cat > /etc/systemd/network/20-dhcp-legacy.network << EOF
-[Match]
-Name=eth*
-
-[Network]
-DHCP=yes
-EOF
-
-sudo systemctl mask systemd-networkd-wait-online.service
-systemctl enable systemd-networkd.service && systemctl enable systemd-resolved.service
-systemctl restart systemd-networkd.service && systemctl restart systemd-resolved.service
-ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
-
-
+# If NOT enabling FIPS, do the baseline install now.
+if [[ "${FIPS_ENABLED}" != "true" ]]; then
+  sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get update
+  sudo apt-get install -y bash jq zstd rsync systemd-timesyncd conntrack iptables rsyslog --no-install-recommends
+else
 #############################################
 # Optional: Enable FIPS using Ubuntu Pro
 #############################################
-if [[ "${FIPS_ENABLED}" == "true" ]]; then
   echo "FIPS enable requested (IS_FIPS=true)"
   echo "===================================="
 
@@ -59,7 +27,7 @@ if [[ "${FIPS_ENABLED}" == "true" ]]; then
   # NOTE: Replace YOUR_TOKEN_HERE or mount the real secret to /run/secrets/pro-attach-config
   sudo mkdir -p /run/secrets
   sudo tee /run/secrets/pro-attach-config >/dev/null << 'EOF'
-token: YOUR_TOKEN_HERE
+token: "${FIPS_TOKEN}"
 enable_services:
   - fips
 EOF
@@ -93,3 +61,34 @@ EOF
   echo "FIPS enablement flow completed."
   echo "NOTE: Some Ubuntu FIPS configurations require a reboot to fully apply kernel-level changes."
 fi
+
+echo "Disabling netplan"
+echo "========================"
+sudo mkdir -p /etc/netplan/backup
+sudo mv /etc/netplan/*.yaml /etc/netplan/backup/ || echo "no yaml netplan files"
+
+
+echo "Configuring systemd-networkd"
+echo "========================"
+cat > /etc/systemd/network/20-dhcp.network << EOF
+[Match]
+Name=en*
+
+[Network]
+DHCP=yes
+EOF
+
+cat > /etc/systemd/network/20-dhcp-legacy.network << EOF
+[Match]
+Name=eth*
+
+[Network]
+DHCP=yes
+EOF
+
+sudo systemctl mask systemd-networkd-wait-online.service
+systemctl enable systemd-networkd.service && systemctl enable systemd-resolved.service
+systemctl restart systemd-networkd.service && systemctl restart systemd-resolved.service
+ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
+
+
