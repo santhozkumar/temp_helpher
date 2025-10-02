@@ -24,8 +24,6 @@ Name=en*
 
 [Network]
 DHCP=yes
-[DHCP]
-ClientIdentifier=mac
 EOF
 
 cat > /etc/systemd/network/20-dhcp-legacy.network << EOF
@@ -34,8 +32,6 @@ Name=eth*
 
 [Network]
 DHCP=yes
-[DHCP]
-ClientIdentifier=mac
 EOF
 
 sudo systemctl mask systemd-networkd-wait-online.service
