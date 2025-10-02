@@ -1,3 +1,10 @@
+#!/bin/bash
+
+exec   > >(tee -ia /var/log/pre-requisite-install.log)
+exec  2> >(tee -ia /var/log/pre-requisite-install.log >& 2)
+exec 19>> /var/log/pre-requisite-install.log
+
+
 sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get update
 sudo apt-get update && sudo apt-get install -y bash jq zstd rsync systemd-timesyncd conntrack iptables rsyslog --no-install-recommends
 sudo mkdir -p /etc/netplan/backup
