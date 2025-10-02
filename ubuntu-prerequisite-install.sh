@@ -15,7 +15,6 @@ echo "========================"
 sudo mkdir -p /etc/netplan/backup
 sudo mv /etc/netplan/*.yaml /etc/netplan/backup/
 sudo apt-get purge -y netplan.io
-sudo touch /etc/butt/butt-init.disabled
 
 
 echo "Configuring systemd-networkd"
