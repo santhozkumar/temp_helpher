@@ -13,8 +13,7 @@ sudo apt-get update && sudo apt-get install -y bash jq zstd rsync systemd-timesy
 echo "Disabling netplan"
 echo "========================"
 sudo mkdir -p /etc/netplan/backup
-sudo mv /etc/netplan/*.yaml /etc/netplan/backup/
-sudo apt-get purge -y netplan.io
+sudo mv /etc/netplan/*.yaml /etc/netplan/backup/ || echo "no yaml netplan files"
 
 
 echo "Configuring systemd-networkd"
