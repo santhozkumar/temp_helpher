@@ -4,6 +4,46 @@ exec   > >(tee -ia /var/log/pre_requisite_install.log)
 exec  2> >(tee -ia /var/log/pre_requisite_install.log >& 2)
 exec 19>> /var/log/pre_requisite_install.log
 
+enalbe_rsync_full_access() {
+  # 1. Enable SELinux to allow full rsync access
+  sudo setsebool -P rsync_full_access 1
+  # 2. Install necessary tools for SELinux policy modules
+  sudo dnf install selinux-policy-devel audit -y
+  # 3. Create the SELinux policy file
+  sudo tee /tmp/rsync_dac_override.te > /dev/null << 'EOF'
+module rsync_dac_override 1.0;
+require {
+  type rsync_t;
+  type default_t;
+  class dir read;
+  class capability dac_override;
+}
+# Allow rsync_t to read directories labeled default_t
+allow rsync_t default_t:dir read;
+# Allow rsync_t to override discretionary access control (DAC)
+allow rsync_t self:capability dac_override;
+EOF
+  
+  # 4. Compile and package the SELinux policy module
+  cd /tmp
+  sudo checkmodule -M -m --output rsync_dac_override.mod rsync_dac_override.te
+  sudo semodule_package --outfile rsync_dac_override.pp -m rsync_dac_override.mod
+  
+  # 5. Install the compiled policy module
+  sudo semodule --install rsync_dac_override.pp
+
+  cd - 
+  }
+
+
+verify_cgroup_v2() {
+  cgroup_type=$(stat -fc %T /sys/fs/cgroup)
+  if [ "$cgroup_type" != "cgroup2fs" ]; then
+    echo "Cgroup v2 is not enabled"
+    exit 1
+  fi
+}
+
 base_install() {
   sudo dnf update -y
   sudo dnf install -y bash wget jq zstd rsync conntrack-tools iptables rsyslog nfs-utils
@@ -27,36 +67,11 @@ else
   echo "FIPS enable requested (IS_FIPS=true)"
   echo "====================================" 
   fips-mode-setup --enable
-  echo "NOTE: RHEL FIPS configurations require a reboot to fully apply kernel-level changes."
-  base_install
+  echo "NOTE: Rocky9 FIPS configurations require a reboot to fully apply kernel-level changes."
 
-  # 1. Enable SELinux to allow full rsync access
-  sudo setsebool -P rsync_full_access 1
-  # 2. Install necessary tools for SELinux policy modules
-  sudo dnf install selinux-policy-devel audit -y
-  # 3. Create the SELinux policy file
-  sudo tee /tmp/rsync_dac_override.te > /dev/null << 'EOF'
-  module rsync_dac_override 1.0;
-  require {
-    type rsync_t;
-    type default_t;
-    class dir read;
-    class capability dac_override;
-  }
-  # Allow rsync_t to read directories labeled default_t
-  allow rsync_t default_t:dir read;
-  # Allow rsync_t to override discretionary access control (DAC)
-  allow rsync_t self:capability dac_override;
-  EOF
-  
-  # 4. Compile and package the SELinux policy module
-  cd /tmp
-  sudo checkmodule -M -m --output rsync_dac_override.mod rsync_dac_override.te
-  sudo semodule_package --outfile rsync_dac_override.pp -m rsync_dac_override.mod
-  
-  # 5. Install the compiled policy module
-  sudo semodule --install rsync_dac_override.pp
-  cd -
+  base_install
+  enalbe_rsync_full_access
+  verify_cgroup_v2
 fi
 
 echo "Disabling NetworkManager"
