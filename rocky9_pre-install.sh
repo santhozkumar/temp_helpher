@@ -6,7 +6,7 @@ exec 19>> /var/log/pre_requisite_install.log
 
 base_install() {
   sudo dnf update -y
-  sudo dnf install -y bash jq zstd rsync conntrack-tools iptables rsyslog
+  sudo dnf install -y bash wget jq zstd rsync conntrack-tools iptables rsyslog nfs-utils
 
   sudo dnf config-manager --set-enabled crb
   sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
