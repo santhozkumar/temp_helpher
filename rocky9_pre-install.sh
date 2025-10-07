@@ -29,6 +29,34 @@ else
   fips-mode-setup --enable
   echo "NOTE: RHEL FIPS configurations require a reboot to fully apply kernel-level changes."
   base_install
+
+  # 1. Enable SELinux to allow full rsync access
+  sudo setsebool -P rsync_full_access 1
+  # 2. Install necessary tools for SELinux policy modules
+  sudo dnf install selinux-policy-devel audit -y
+  # 3. Create the SELinux policy file
+  sudo tee /tmp/rsync_dac_override.te > /dev/null << 'EOF'
+  module rsync_dac_override 1.0;
+  require {
+    type rsync_t;
+    type default_t;
+    class dir read;
+    class capability dac_override;
+  }
+  # Allow rsync_t to read directories labeled default_t
+  allow rsync_t default_t:dir read;
+  # Allow rsync_t to override discretionary access control (DAC)
+  allow rsync_t self:capability dac_override;
+  EOF
+  
+  # 4. Compile and package the SELinux policy module
+  cd /tmp
+  sudo checkmodule -M -m --output rsync_dac_override.mod rsync_dac_override.te
+  sudo semodule_package --outfile rsync_dac_override.pp -m rsync_dac_override.mod
+  
+  # 5. Install the compiled policy module
+  sudo semodule --install rsync_dac_override.pp
+  cd -
 fi
 
 echo "Disabling NetworkManager"
