@@ -44,6 +44,12 @@ verify_cgroup_v2() {
   fi
 }
 
+other_dependencies() {
+  # required for longhorn 
+  sudo dnf install -y iscsi-initiator-utils
+  sudo systemctl enable --now iscsid
+}
+
 base_install() {
   sudo dnf update -y
   sudo dnf install -y bash wget jq zstd rsync conntrack-tools iptables rsyslog nfs-utils
@@ -56,6 +62,8 @@ base_install() {
   sudo systemctl enable --now systemd-timesyncd 
 
   timedatectl show-timesync --all
+  
+  other_dependencies
 }
 
 
@@ -63,6 +71,7 @@ FIPS_ENABLED="${IS_FIPS:-false}"
 
 if [[ "${FIPS_ENABLED}" != "true" ]]; then
   base_install
+  
 else
   echo "FIPS enable requested (IS_FIPS=true)"
   echo "====================================" 
