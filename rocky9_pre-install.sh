@@ -4,7 +4,7 @@ exec   > >(tee -ia /var/log/pre_requisite_install.log)
 exec  2> >(tee -ia /var/log/pre_requisite_install.log >& 2)
 exec 19>> /var/log/pre_requisite_install.log
 
-enalbe_rsync_full_access() {
+enable_rsync_full_access() {
   # 1. Enable SELinux to allow full rsync access
   sudo setsebool -P rsync_full_access 1
   # 2. Install necessary tools for SELinux policy modules
@@ -54,9 +54,12 @@ base_install() {
   sudo dnf update -y
   sudo dnf install -y bash wget jq zstd rsync conntrack-tools iptables rsyslog nfs-utils
 
-  sudo dnf config-manager --set-enabled crb
-  sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-  sudo dnf install -y systemd-resolved systemd-networkd systemd-timesyncd
+  sudo dnf install -y systemd-resolved
+  wget -O systemd-networkd.rpm https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/s/systemd-networkd-253.34-1.el9.x86_64.rpm
+  wget -O systemd-timesyncd.rpm https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/Packages/s/systemd-timesyncd-253.34-1.el9.x86_64.rpm
+
+  rpm -Uvh systemd-networkd.rpm 
+  rpm -Uvh systemd-timesyncd.rpm
 
   sudo systemctl disable --now chronyd  || echo "chronyd not installed"
   sudo systemctl enable --now systemd-timesyncd 
@@ -69,9 +72,9 @@ base_install() {
 
 FIPS_ENABLED="${IS_FIPS:-false}"
 
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/99-wheel-nopasswd
 if [[ "${FIPS_ENABLED}" != "true" ]]; then
   base_install
-  
 else
   echo "FIPS enable requested (IS_FIPS=true)"
   echo "====================================" 
@@ -79,7 +82,7 @@ else
   echo "NOTE: Rocky9 FIPS configurations require a reboot to fully apply kernel-level changes."
 
   base_install
-  enalbe_rsync_full_access
+  enable_rsync_full_access
   verify_cgroup_v2
 fi
 
@@ -111,5 +114,4 @@ EOF
 
 sudo systemctl mask systemd-networkd-wait-online.service
 systemctl enable --now systemd-networkd.service && systemctl enable --now systemd-resolved.service
-# systemctl restart systemd-networkd.service && systemctl restart systemd-resolved.service
 ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
