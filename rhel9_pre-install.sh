@@ -91,21 +91,6 @@ base_install() {
   other_dependencies
 }
 
-# FIPS configuration for RHEL
-setup_fips_rhel() {
-  echo "FIPS enable requested (IS_FIPS=true)"
-  echo "====================================" 
-  
-  # Install FIPS packages
-  sudo dnf install -y dracut-fips dracut-fips-aesni
-  
-  # Enable FIPS mode
-  sudo fips-mode-setup --enable
-  
-  echo "NOTE: RHEL FIPS configurations require a reboot to fully apply kernel-level changes."
-  echo "After reboot, verify FIPS is enabled with: fips-mode-setup --check"
-}
-
 # Main execution
 FIPS_ENABLED="${IS_FIPS:-false}"
 # USERNAME and PASSWORD are required for RHEL subscription registration
@@ -117,27 +102,26 @@ fi
 echo "Starting RHEL 9 prerequisite installation..."
 echo "FIPS Enabled: ${FIPS_ENABLED}"
 
-# Setup repositories first
+# Register RHEL subscription
 register_rhel_subscription
 
-# Disable SELinux
-# disable_selinux
-
-# Add admin group
+# Remove Admin group after PE-7679 is resolved
 sudo groupadd admin
-# Configure sudo
-echo '%wheel ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/99-wheel-nopasswd
 echo '%admin ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/99-admin-nopasswd
 
-if [[ "${FIPS_ENABLED}" != "true" ]]; then
-  base_install
-  enable_rsync_full_access
-else
-  setup_fips_rhel
-  base_install
-  enable_rsync_full_access
-  verify_cgroup_v2
+# disable_selinux
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/99-wheel-nopasswd
+
+if [[ "${FIPS_ENABLED}" == "true" ]]; then
+  echo "FIPS enable requested (IS_FIPS=true)"
+  echo "====================================" 
+  fips-mode-setup --enable
+  echo "NOTE: RHEL-9 FIPS configurations require a reboot to fully apply kernel-level changes."
 fi
+
+base_install
+enable_rsync_full_access
+verify_cgroup_v2
 
 echo "Disabling NetworkManager"
 echo "========================"
