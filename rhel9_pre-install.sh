@@ -14,7 +14,7 @@ register_rhel_subscription() {
   subscription-manager repos --list-enabled
 
   dnf repolist
-  echo "Rhel Registration completed successfully!"
+  echo "RHEL Subscription Registration completed successfully!"
 }
 
 enable_rsync_full_access() {
@@ -121,7 +121,7 @@ echo "FIPS Enabled: ${FIPS_ENABLED}"
 register_rhel_subscription
 
 # Disable SELinux
-disable_selinux
+# disable_selinux
 
 # Add admin group
 sudo groupadd admin
