@@ -7,7 +7,20 @@ exec 19>> /var/log/pre_requisite_install.log
 # RHEL Subscription and Repository Management
 register_rhel_subscription() {
   echo "Registering RHEL subscription..."
-  subscription-manager register --username "${USERNAME}" --password "${PASSWORD}"
+  if [ -z "${USERNAME:-}" ] || [ -z "${PASSWORD:-}" ]; then
+   echo "ERROR: USERNAME and PASSWORD environment variables are required for RHEL subscription registration"
+   exit 1
+  fi
+  if ! subscription-manager status &>/dev/null; then
+   echo "System is not registered. Registering now..."
+   subscription-manager register --username "$USERNAME" --password "$PASSWORD"
+   if [ $? -ne 0 ]; then
+    echo "Failed to register RHEL subscription"
+    exit 1
+   fi
+   else
+    echo "System is already registered."
+  fi
 
   # list the available repositories
   echo "Available repositories:"
@@ -93,11 +106,6 @@ base_install() {
 
 # Main execution
 FIPS_ENABLED="${IS_FIPS:-false}"
-# USERNAME and PASSWORD are required for RHEL subscription registration
-if [ -z "${USERNAME:-}" ] || [ -z "${PASSWORD:-}" ]; then
-  echo "ERROR: USERNAME and PASSWORD environment variables are required for RHEL subscription registration"
-  exit 1
-fi
 
 echo "Starting RHEL 9 prerequisite installation..."
 echo "FIPS Enabled: ${FIPS_ENABLED}"
